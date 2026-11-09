@@ -101,6 +101,13 @@
   <div class="card">
     <h2>📋 第 1 步：填写活动信息</h2>
     <div class="tip">💡 带 <b>*</b> 的为必填项，其余可留空稍后补。内容会<b>自动保存</b>，中途退出不丢失。</div>
+    <label>项目 / 学堂名称 *</label>
+    <input type="text" id="f_title" list="titleList" value="&quot;智引未来&quot;青少年科普学堂" placeholder="填页面顶部的大标题">
+    <datalist id="titleList">
+      <option value="&quot;智引未来&quot;青少年科普学堂"></option>
+      <option value="&quot;记忆包裹&quot;老年认知健康课堂"></option>
+      <option value="&quot;向日葵&quot;青少年成长课堂"></option>
+    </datalist>
     <div class="row2">
       <div><label>活动编号 *</label><input type="text" id="f_no" placeholder="如：24"></div>
       <div><label>活动时间 *</label><input type="date" id="f_date"></div>
@@ -222,7 +229,7 @@ function pick(input, key){
 }
 
 /* ---------- 草稿自动保存 ---------- */
-const FIELDS = ['f_no','f_date','f_name','f_obj','f_cnt','f_place','f_task','f_goal','f_rec'];
+const FIELDS = ['f_title','f_no','f_date','f_name','f_obj','f_cnt','f_place','f_task','f_goal','f_rec'];
 FIELDS.forEach(id=> $(id).addEventListener('input', saveDraft));
 function saveDraft(){
   const d = {fields:{}, photos, flags};
@@ -263,10 +270,11 @@ function fmtDate(v){
 }
 function buildReport(){
   const no = $('f_no').value.trim();
+  const title = $('f_title').value.trim() || '"智引未来"青少年科普学堂';
   const tds = SLOTS.map(s=> photos[s.key] ? `<td><img src="${photos[s.key]}"></td>` : '<td></td>');
   const imgs = `<table class="imgs"><tr>${tds[0]}${tds[1]}</tr><tr>${tds[2]}${tds[3]}</tr></table>`;
   return `
-  <div class="r-title">"智引未来"青少年科普学堂</div>
+  <div class="r-title">${esc(title)}</div>
   <div class="r-title-u">活 动 简 报</div>
   <table class="rep">
     <tr><td class="k">活动名称</td><td colspan="3">${esc($('f_name').value)}</td>
@@ -287,6 +295,7 @@ function buildReport(){
    （照片被压缩到最长边 1100px，直接超出 A4），因此必须显式声明 width/height 属性。 */
 function buildWordReport(){
   const no = $('f_no').value.trim();
+  const title = $('f_title').value.trim() || '"智引未来"青少年科普学堂';
   // 6 等分列宽，每列 85.05pt，总宽 510.3pt = A4 宽 595.3pt − 左右页边距 85pt
   const IMG_W_PT = 244, IMG_H_PT = 143;          // 单张照片尺寸（pt）
   const IMG_W_PX = Math.round(IMG_W_PT*4/3);     // Word 兼容用 px 属性（1pt=4/3px）
@@ -295,7 +304,7 @@ function buildWordReport(){
     ? `<td colspan="3" style="border:none;padding:3pt;text-align:center;vertical-align:top;"><img src="${photos[k]}" width="${IMG_W_PX}" height="${IMG_H_PX}" style="width:${IMG_W_PT}pt;height:${IMG_H_PT}pt;"></td>`
     : `<td colspan="3" style="border:none;padding:3pt;"></td>`;
   return `
-  <div class="r-title">"智引未来"青少年科普学堂</div>
+  <div class="r-title">${esc(title)}</div>
   <div class="r-title-u">活 动 简 报</div>
   <table class="rep">
     <colgroup><col style="width:85.05pt"><col style="width:85.05pt"><col style="width:85.05pt"><col style="width:85.05pt"><col style="width:85.05pt"><col style="width:85.05pt"></colgroup>
@@ -315,7 +324,7 @@ function buildWordReport(){
   </table>`;
 }
 function gen(){
-  const need = [['f_no','活动编号'],['f_name','活动名称'],['f_date','活动时间'],['f_obj','参加对象'],['f_cnt','参与人数'],['f_place','活动地点'],['f_task','任务'],['f_goal','目标'],['f_rec','活动记录']];
+  const need = [['f_title','项目名称'],['f_no','活动编号'],['f_name','活动名称'],['f_date','活动时间'],['f_obj','参加对象'],['f_cnt','参与人数'],['f_place','活动地点'],['f_task','任务'],['f_goal','目标'],['f_rec','活动记录']];
   const miss = need.filter(([id])=> !$(id).value.trim()).map(([,n])=>n);
   const nPic = Object.values(photos).filter(Boolean).length;
   const noFlag = !Object.values(flags).some(Boolean);
@@ -355,8 +364,9 @@ function exportWord(){
   const blob = new Blob(['\ufeff', html], {type:'application/msword'});
   const a = document.createElement('a');
   const name = ($('f_name').value || '活动').replace(/[\\/:*?"<>|]/g,'-');
+  const titleFile = ($('f_title').value.trim() || '活动简报').replace(/[\\/:*?"<>|]/g,'-');
   a.href = URL.createObjectURL(blob);
-  a.download = `青少年科普学堂活动简报${$('f_no').value}-${name}.doc`;
+  a.download = `${titleFile}活动简报${$('f_no').value}-${name}.doc`;
   document.body.appendChild(a); a.click(); a.remove();
 }
 

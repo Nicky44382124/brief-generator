@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>青少年科普学堂 · 简报生成器</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         background:linear-gradient(160deg,#fff7ec 0%,#ffedd0 45%,#ffe3b8 100%);
+         min-height:100vh; color:#3a2c1a; padding-bottom:40px; }
+  .top { background:linear-gradient(135deg,#ff9d2e,#ff7a1a); color:#fff; padding:22px 18px 18px;
+         border-radius:0 0 26px 26px; box-shadow:0 4px 18px rgba(255,122,26,.35); }
+  .top h1 { font-size:21px; letter-spacing:1px; }
+  .top p { font-size:13px; opacity:.92; margin-top:6px; }
+  .wrap { max-width:520px; margin:0 auto; padding:0 14px; }
+  .card { background:#fff; border-radius:16px; padding:16px 14px; margin-top:14px;
+          box-shadow:0 2px 10px rgba(180,120,40,.12); }
+  .card h2 { font-size:15px; color:#e07300; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .card h2 .tag { background:#fff1dd; color:#e07300; font-size:11px; padding:2px 8px; border-radius:99px; }
+  .tip { background:#fff6e8; border:1.5px dashed #ffb95e; border-radius:12px; padding:10px 12px;
+         font-size:13px; color:#a35f00; line-height:1.6; margin-bottom:12px; }
+  .tip b { color:#e04b00; }
+  label { display:block; font-size:13px; color:#8a6b45; margin:10px 0 5px; font-weight:600; }
+  input[type=text], input[type=number], input[type=date], textarea {
+      width:100%; border:1.5px solid #f0d9b8; border-radius:10px; padding:11px 12px;
+      font-size:15px; background:#fffdf8; outline:none; transition:border .2s; }
+  input:focus, textarea:focus { border-color:#ff9d2e; background:#fff; }
+  textarea { min-height:90px; resize:vertical; line-height:1.7; }
+  .row2 { display:flex; gap:10px; }
+  .row2 > div { flex:1; }
+  /* 照片槽位 */
+  .slots { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .slot { border:2px dashed #ffc884; border-radius:14px; background:#fffbf3;
+          padding:10px; text-align:center; position:relative; }
+  .slot.filled { border-style:solid; border-color:#7ac943; background:#f4fbee; }
+  .slot .cap { font-size:13px; font-weight:700; color:#c77700; margin-bottom:6px; }
+  .slot.filled .cap { color:#4d9c22; }
+  .slot img { width:100%; height:110px; object-fit:cover; border-radius:10px; display:block; }
+  .slot .ph { height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+              color:#e0a75a; font-size:26px; }
+  .slot .ph span { font-size:12px; margin-top:4px; }
+  .slot label.btnpick { display:block; margin-top:8px; background:#ff9d2e; color:#fff; font-size:13px;
+        padding:8px 0; border-radius:99px; font-weight:700; }
+  .slot.filled label.btnpick { background:#7ac943; }
+  .slot input[type=file] { display:none; }
+  .flagtag { margin-top:7px; font-size:12px; color:#c75000; display:flex; align-items:center; justify-content:center; gap:5px; }
+  .flagtag input { transform:scale(1.3); accent-color:#e04b00; }
+  .bigbtn { width:100%; border:none; border-radius:14px; padding:16px; font-size:17px; font-weight:800;
+            color:#fff; background:linear-gradient(135deg,#ff9d2e,#ff6a00);
+            box-shadow:0 5px 16px rgba(255,106,0,.4); margin-top:18px; letter-spacing:2px; }
+  .subbtn { width:100%; border:1.5px solid #f0c98e; background:#fff; color:#b07b2a; border-radius:12px;
+            padding:12px; font-size:14px; font-weight:600; margin-top:10px; }
+  /* 预览页 */
+  #preview { display:none; }
+  .toolbar { display:flex; gap:8px; margin-top:14px; }
+  .toolbar button { flex:1; border:none; border-radius:12px; padding:13px 4px; font-size:14px; font-weight:700; }
+  .b-word { background:#2f7bd8; color:#fff; }
+  .b-print { background:#7ac943; color:#fff; }
+  .b-back { background:#fff; color:#b07b2a; border:1.5px solid #f0c98e; }
+  /* 简报样式（预览 + Word 共用） */
+  .report { background:#fff; padding:26px 18px; margin-top:16px; border-radius:8px;
+            box-shadow:0 3px 14px rgba(150,100,30,.18); }
+  .r-title { text-align:center; font-size:22px; font-weight:800; letter-spacing:2px;
+             font-family:"SimSun","STSong",serif; margin-bottom:4px; }
+  .r-title-u { text-align:center; font-size:15px; font-family:"SimSun","STSong",serif;
+               border-bottom:2.5px solid #c00; padding-bottom:8px; margin-bottom:14px; letter-spacing:1px; }
+  table.rep { width:100%; border-collapse:collapse; font-size:13px; }
+  table.rep td { border:1px solid #000; padding:7px 8px; vertical-align:top; line-height:1.7; }
+  td.k { width:78px; text-align:center; font-weight:700; background:#f7f7f7; white-space:nowrap; }
+  .rep-imgs { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .rep-imgs figure { margin:0; text-align:center; }
+  .rep-imgs img { width:100%; height:105px; object-fit:cover; border:1px solid #999; display:block; }
+  .rep-imgs figcaption { font-size:11px; color:#444; padding-top:2px; }
+  .r-foot { text-align:right; font-size:13px; margin-top:10px; font-family:"SimSun",serif; }
+  @media print {
+    body { background:#fff; padding:0; }
+    .top,.card,.toolbar,.bigbtn,.subbtn,.no-print { display:none !important; }
+    #preview { display:block !important; }
+    .report { box-shadow:none; border-radius:0; padding:10mm 8mm; margin:0; max-width:none; }
+    @page { size:A4; margin:12mm; }
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>🌻 青少年科普学堂 · 简报生成器</h1>
+  <p>填信息 → 传照片 → 一键生成简报，可导出 Word / 打印 PDF</p>
+</div>
+
+<div class="wrap">
+<!-- ============ 第 1 屏：填写表单 ============ -->
+<div id="formView">
+  <div class="card">
+    <h2>📋 第 1 步：填写活动信息</h2>
+    <div class="tip">💡 带 <b>*</b> 的为必填项，其余可留空稍后补。内容会<b>自动保存</b>，中途退出不丢失。</div>
+    <div class="row2">
+      <div><label>活动编号 *</label><input type="text" id="f_no" placeholder="如：24"></div>
+      <div><label>活动时间 *</label><input type="date" id="f_date"></div>
+    </div>
+    <label>活动名称 *</label><input type="text" id="f_name" placeholder="如：预防烧烫伤科普课">
+    <div class="row2">
+      <div><label>参加对象 *</label><input type="text" id="f_obj" placeholder="如：红缨幼儿园大班幼儿"></div>
+      <div><label>参与人数 *</label><input type="number" id="f_cnt" placeholder="如：35"></div>
+    </div>
+    <label>活动地点 *</label><input type="text" id="f_place" placeholder="如：汉川市红缨幼儿园">
+  </div>
+
+  <div class="card">
+    <h2>🤖 AI 帮写 <span class="tag">偷懒模式</span></h2>
+    <div class="tip">✨ 懒得打字？选个活动类型，用大白话写一两句今天干了啥，点按钮自动生成规范的<b>任务 / 目标 / 活动记录</b>，生成后可随意修改。</div>
+    <label>活动类型</label>
+    <select id="ai_type" style="width:100%;border:1.5px solid #f0d9b8;border-radius:10px;padding:11px 12px;font-size:15px;background:#fffdf8;">
+      <option value="lecture">📚 科普讲解课</option>
+      <option value="safety">🛡️ 安全自护教育</option>
+      <option value="family">👨‍👩‍👧 亲子互动课堂</option>
+      <option value="field">🔬 户外研学考察</option>
+      <option value="show">🎪 科普秀 / 展演</option>
+      <option value="festival">🎉 节日主题活动</option>
+    </select>
+    <label>今天的活动要点（大白话即可）</label>
+    <textarea id="ai_pts" style="min-height:70px" placeholder="例：讲了气象知识，参观了观测场，孩子们玩了模拟播报员的游戏"></textarea>
+    <button class="bigbtn" style="margin-top:12px;padding:13px;font-size:15px" onclick="aiWrite()">✨ 一键生成文字</button>
+  </div>
+
+  <div class="card">
+    <h2>🎯 任务和目标</h2>
+    <label>任务 *</label>
+    <textarea id="f_task" placeholder="本次活动承担的主要任务，一两句话即可"></textarea>
+    <label>目标 *</label>
+    <textarea id="f_goal" placeholder="预期达成的目标，如：让幼儿掌握"冲脱泡盖送"五步急救法"></textarea>
+    <label>活动记录 *</label>
+    <textarea id="f_rec" style="min-height:130px" placeholder="按时间顺序记录活动过程：1.开场…… 2.讲解演示…… 3.互动体验…… 4.总结发放物料……"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>📸 第 3 步：上传 4 张照片 <span class="tag">全景 / 中景 / 特写 / 互动</span></h2>
+    <div class="tip">⚠️ <b>重要：4 张中至少 1 张要拍到红色"青少年科普学堂"旗帜或"智引未来"横幅</b>，拍好后勾选该张下面的 ✅。</div>
+    <div class="slots" id="slots"></div>
+  </div>
+
+  <button class="bigbtn" onclick="gen()">✨ 生成简报</button>
+  <button class="subbtn" onclick="clearAll()">🗑️ 清空重填</button>
+</div>
+
+<!-- ============ 第 2 屏：预览与导出 ============ -->
+<div id="preview">
+  <div class="card">
+    <h2>✅ 简报已生成</h2>
+    <div class="tip">👇 预览无误后：<b>导出 Word</b> 可直接存到手机/发微信；<b>打印PDF</b> 在打印菜单里选"另存为PDF"。</div>
+    <div class="toolbar">
+      <button class="b-back" onclick="backEdit()">← 返回修改</button>
+      <button class="b-word" onclick="exportWord()">📄 导出Word</button>
+      <button class="b-print" onclick="window.print()">🖨️ 打印PDF</button>
+    </div>
+  </div>
+  <div class="report" id="reportBox"></div>
+</div>
+</div>
+
+<script>
+const SLOTS = [
+  {key:'pan',  cap:'1️⃣ 全景', hint:'场地全貌'},
+  {key:'mid',  cap:'2️⃣ 中景', hint:'讲解/流程'},
+  {key:'close',cap:'3️⃣ 特写', hint:'细节/作品'},
+  {key:'act',  cap:'4️⃣ 互动', hint:'孩子参与'},
+];
+const CAPTIONS = {pan:'全景', mid:'中景', close:'特写', act:'互动'};
+const photos = {pan:null, mid:null, close:null, act:null};
+const flags  = {pan:false, mid:false, close:false, act:false};
+const $ = id => document.getElementById(id);
+
+/* ---------- 初始化槽位 ---------- */
+const slotsBox = $('slots');
+SLOTS.forEach(s=>{
+  const d = document.createElement('div');
+  d.className = 'slot'; d.id = 'slot_'+s.key;
+  d.innerHTML = `<div class="cap">${s.cap}</div>
+    <div class="ph">📷<span>${s.hint}</span></div>
+    <img id="img_${s.key}" style="display:none">
+    <label class="btnpick">拍照 / 选照片
+      <input type="file" accept="image/*" onchange="pick(this,'${s.key}')"></label>
+    <label class="flagtag"><input type="checkbox" onchange="flags['${s.key}']=this.checked">
+      含旗帜/横幅 ✅</label>`;
+  slotsBox.appendChild(d);
+});
+
+/* ---------- 选图 + 压缩 ---------- */
+function pick(input, key){
+  const f = input.files[0];
+  if(!f) return;
+  const rd = new FileReader();
+  rd.onload = e=>{
+    const img = new Image();
+    img.onload = ()=>{
+      // 压缩：最长边 1100px，JPEG 0.82
+      const max = 1100;
+      let w = img.width, h = img.height;
+      const sc = Math.min(1, max/Math.max(w,h));
+      w = Math.round(w*sc); h = Math.round(h*sc);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      photos[key] = cv.toDataURL('image/jpeg',0.82);
+      $('img_'+key).src = photos[key];
+      $('img_'+key).style.display = 'block';
+      document.querySelector('#slot_'+key+' .ph').style.display = 'none';
+      $('slot_'+key).classList.add('filled');
+      document.querySelector('#slot_'+key+' .btnpick').childNodes[0].textContent = '↻ 重选';
+      saveDraft();
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
+
+/* ---------- 草稿自动保存 ---------- */
+const FIELDS = ['f_no','f_date','f_name','f_obj','f_cnt','f_place','f_task','f_goal','f_rec'];
+FIELDS.forEach(id=> $(id).addEventListener('input', saveDraft));
+function saveDraft(){
+  const d = {fields:{}, photos, flags};
+  FIELDS.forEach(id=> d.fields[id] = $(id).value);
+  try{ localStorage.setItem('kb_brief_draft', JSON.stringify(d)); }catch(e){}
+}
+function loadDraft(){
+  try{
+    const d = JSON.parse(localStorage.getItem('kb_brief_draft')||'null');
+    if(!d) return;
+    FIELDS.forEach(id=>{ if(d.fields[id]) $(id).value = d.fields[id]; });
+    if(d.photos) Object.keys(photos).forEach(k=>{
+      if(d.photos[k]){
+        photos[k]=d.photos[k]; flags[k]=!!(d.flags&&d.flags[k]);
+        $('img_'+k).src = photos[k]; $('img_'+k).style.display='block';
+        document.querySelector('#slot_'+k+' .ph').style.display='none';
+        $('slot_'+k).classList.add('filled');
+        const cb = document.querySelector('#slot_'+k+' .flagtag input');
+        if(cb) cb.checked = flags[k];
+        document.querySelector('#slot_'+k+' .btnpick').childNodes[0].textContent='↻ 重选';
+      }
+    });
+  }catch(e){}
+}
+function clearAll(){
+  if(!confirm('确定清空所有已填内容和照片？')) return;
+  localStorage.removeItem('kb_brief_draft');
+  location.reload();
+}
+
+/* ---------- 生成简报 ---------- */
+let reportHTML = '';
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+function fmtDate(v){
+  if(!v) return '';
+  const [y,m,d] = v.split('-');
+  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+}
+function buildReport(){
+  const no = $('f_no').value.trim();
+  const imgs = SLOTS.map(s=> photos[s.key] ? `<figure><img src="${photos[s.key]}"><figcaption>${CAPTIONS[s.key]}</figcaption></figure>` : '').join('');
+  return `
+  <div class="r-title">"智引未来"青少年科普学堂</div>
+  <div class="r-title-u">活 动 简 报</div>
+  <table class="rep">
+    <tr><td class="k">活动名称</td><td colspan="3">${esc($('f_name').value)}</td>
+        <td class="k">活动编号</td><td>${esc(no)}</td></tr>
+    <tr><td class="k">参加对象</td><td colspan="3">${esc($('f_obj').value)}</td>
+        <td class="k">参与人数</td><td>${esc($('f_cnt').value)}</td></tr>
+    <tr><td class="k">活动地点</td><td colspan="3">${esc($('f_place').value)}</td>
+        <td class="k">活动时间</td><td>${fmtDate($('f_date').value)}</td></tr>
+    <tr><td colspan="6" style="text-align:center;font-weight:bold;background:#f7f7f7">活动任务和目标</td></tr>
+    <tr><td colspan="6">任务：${esc($('f_task').value)}<br>目标：${esc($('f_goal').value)}</td></tr>
+    <tr><td colspan="6" style="text-align:center;font-weight:bold;background:#f7f7f7">活动记录</td></tr>
+    <tr><td colspan="6">${esc($('f_rec').value)}</td></tr>
+    <tr><td class="k">活动剪影</td><td colspan="5"><div class="rep-imgs">${imgs}</div></td></tr>
+  </table>`;
+}
+function gen(){
+  const need = [['f_no','活动编号'],['f_name','活动名称'],['f_date','活动时间'],['f_obj','参加对象'],['f_cnt','参与人数'],['f_place','活动地点'],['f_task','任务'],['f_goal','目标'],['f_rec','活动记录']];
+  const miss = need.filter(([id])=> !$(id).value.trim()).map(([,n])=>n);
+  const nPic = Object.values(photos).filter(Boolean).length;
+  const noFlag = !Object.values(flags).some(Boolean);
+  let warn = '';
+  if(miss.length) warn += '【' + miss.join('、') + '】';
+  if(nPic < 4) warn += '照片只传了 ' + nPic + '/4 张；';
+  if(noFlag) warn += '没有勾选"含旗帜/横幅"；';
+  if(warn && !confirm('提醒：' + warn + '\n\n仍要继续生成吗？')) return;
+  reportHTML = buildReport();
+  $('reportBox').innerHTML = reportHTML;
+  $('formView').style.display = 'none';
+  $('preview').style.display = 'block';
+  window.scrollTo(0,0);
+}
+function backEdit(){
+  $('preview').style.display = 'none';
+  $('formView').style.display = 'block';
+  window.scrollTo(0,0);
+}
+
+/* ---------- 导出 Word ---------- */
+function exportWord(){
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>活动简报</title><style>
+  body{font-family:宋体;font-size:12pt;}
+  .r-title{text-align:center;font-size:22pt;font-weight:bold;}
+  .r-title-u{text-align:center;font-size:15pt;border-bottom:2.5pt solid #c00;padding-bottom:6pt;margin-bottom:10pt;}
+  table.rep{width:100%;border-collapse:collapse;}
+  table.rep td{border:1pt solid #000;padding:6pt;vertical-align:top;line-height:1.7;font-size:12pt;}
+  td.k{text-align:center;font-weight:bold;background:#f7f7f7;width:78pt;}
+  .rep-imgs img{width:220pt;height:150pt;object-fit:cover;}
+  .r-foot{text-align:right;font-size:12pt;margin-top:8pt;}
+  </style></head><body>${reportHTML}</body></html>`;
+  const blob = new Blob(['\ufeff', html], {type:'application/msword'});
+  const a = document.createElement('a');
+  const name = ($('f_name').value || '活动').replace(/[\\/:*?"<>|]/g,'-');
+  a.href = URL.createObjectURL(blob);
+  a.download = `青少年科普学堂活动简报${$('f_no').value}-${name}.doc`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- AI 帮写（离线句式库） ---------- */
+const BANK = {
+  lecture: {
+    task: '通过图片展示、实物演示和互动问答等形式，向孩子们讲解相关科学知识，帮助其建立初步的科学认知。',
+    goal: '让孩子们了解活动主题的基本知识，激发对科学的好奇心和探索兴趣，培养观察、思考和表达的能力。',
+    mid: '社工结合PPT课件与实物道具，深入浅出地讲解知识点，孩子们听得聚精会神、频频举手提问',
+    inter: '孩子们在动手体验中亲身感受科学奥秘'
+  },
+  safety: {
+    task: '通过案例讲解、情景模拟和实操演练，让孩子们掌握相关安全知识和自护技能，筑牢安全防线。',
+    goal: '增强孩子们的安全防范意识，掌握关键的自护自救技能要领，提高应对突发情况的能力。',
+    mid: '社工结合真实案例讲解安全要点，随后进行情景模拟演练，孩子们分组上台实操练习，社工逐一纠正动作要领',
+    inter: '孩子们在模拟演练中反复练习、熟练掌握技能'
+  },
+  family: {
+    task: '通过趣味游戏、亲子协作任务和情感分享环节，增进亲子之间的沟通理解与情感联结。',
+    goal: '帮助家长和孩子学会积极的情感表达与陪伴方法，改善亲子沟通质量，营造温馨和谐的家庭氛围。',
+    mid: '家长与孩子携手完成一项项协作任务，现场笑声不断、暖意融融',
+    inter: '亲子们在游戏互动中加深了彼此的理解与默契'
+  },
+  field: {
+    task: '通过实地参观、观察记录和现场讲解体验，让孩子们近距离观察科学现象，将课堂知识与真实场景相结合。',
+    goal: '拓宽孩子们的科学视野，培养实地观察、记录思考和团队协作的能力，在实践中播撒科学的种子。',
+    mid: '在讲解员的带领下，孩子们依次参观了各个区域，认真观察、记录，不时发出阵阵惊叹',
+    inter: '孩子们边看边问、边学边记，收获满满'
+  },
+  show: {
+    task: '通过神奇有趣的科学实验表演，让孩子们在惊叹与欢笑中理解实验现象背后的科学原理。',
+    goal: '激发孩子们对科学的浓厚兴趣，理解实验背后的科学原理，培养"大胆猜想、小心求证"的科学精神。',
+    mid: '一个个神奇的科学实验轮番上演，全场惊叹声、欢呼声此起彼伏',
+    inter: '孩子们争相举手，上台亲身体验实验的乐趣'
+  },
+  festival: {
+    task: '结合节日契机开展主题科普活动，通过知识宣讲、互动游戏和作品创作，让孩子们在欢乐氛围中学习成长。',
+    goal: '让孩子们了解主题相关的知识与意义，在参与体验中提升综合素养，感受活动带来的快乐与温暖。',
+    mid: '孩子们跟随社工了解主题知识，随后热情投入到互动游戏和动手创作中',
+    inter: '孩子们展示着自己的作品，脸上洋溢着自豪的笑容'
+  }
+};
+function aiWrite(){
+  const pts = $('ai_pts').value.trim();
+  if(!pts){ alert('先在"活动要点"里用大白话写一两句今天干了啥哦～'); return; }
+  const bank = BANK[$('ai_type').value];
+  const name = $('f_name').value.trim() || '本次科普活动';
+  const obj  = $('f_obj').value.trim() || '孩子们';
+  const place= $('f_place').value.trim() || '活动现场';
+  const cnt  = $('f_cnt').value.trim();
+  const theme= pts.split(/[，,。；;、]/)[0].trim() || name;
+  const d = $('f_date').value;
+  const ds = d ? `${parseInt(d.split('-')[1])}月${parseInt(d.split('-')[2])}日` : '近日';
+  $('f_task').value = `以"${theme}"为主题，${bank.task}`;
+  $('f_goal').value = bank.goal;
+  $('f_rec').value = `${ds}，在${place}开展了"${name}"活动，${obj}${cnt ? cnt + '名' : ''}参加了本次活动。开场环节，社工以趣味提问引入主题，孩子们热情高涨、踊跃发言。随后，${bank.mid}。在互动体验环节，${bank.inter}。活动最后，社工带领大家回顾了今天学到的知识，孩子们争先恐后地分享自己的收获与感受，活动在轻松愉快的氛围中圆满结束。（要点：${pts}）`;
+  saveDraft();
+  alert('✨ 已生成！任务、目标、活动记录都填好了，检查一下并删掉不合适的句子再生成简报～');
+}
+
+loadDraft();
+</script>
+</body>
+</html>

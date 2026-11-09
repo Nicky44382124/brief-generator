@@ -77,13 +77,15 @@
     .top,.card,.toolbar,.bigbtn,.subbtn { display:none !important; }
     #preview { display:block !important; }
     .wrap { max-width:none; padding:0; }
-    .report { box-shadow:none; border-radius:0; padding:0; margin:0; max-width:none; }
+    .report { box-shadow:none; border-radius:0; padding:14mm 13mm; margin:0; max-width:none; }
     .r-title { font-size:20pt; }
     .r-title-u { font-size:14pt; }
     table.rep { font-size:10.5pt; }
     table.rep td { padding:5pt 6pt; line-height:1.6; }
     table.imgs img { height:130pt; }
-    @page { size:A4 portrait; margin:14mm 13mm; }
+    /* 页边距设为 0：浏览器（手机/电脑 Chrome、Safari）在页边距为 0 时不再自动绘制
+       日期、标题、网址、页码等页眉页脚；A4 边距改由 .report 的 padding 提供 */
+    @page { size:A4 portrait; margin:0; }
   }
 </style>
 </head>

@@ -86,7 +86,6 @@
     /* 照片智能分页：每个 .pg 是一个"照片页"，打印时强制另起一页（最后一张除外） */
     .pg { page-break-after:always; margin-top:6pt; }
     .pglast { page-break-after:auto; }
-    table.imgs2 img { height:175pt; }
     /* 页边距设为 0：浏览器（手机/电脑 Chrome、Safari）在页边距为 0 时不再自动绘制
        日期、标题、网址、页码等页眉页脚；A4 边距改由 .report 的 padding 提供 */
     @page { size:A4 portrait; margin:0; }
@@ -165,7 +164,7 @@
 <div id="preview">
   <div class="card">
     <h2>✅ 简报已生成</h2>
-    <div class="tip">👇 预览无误后：<b>导出 Word</b> 可直接存到手机/发微信；<b>打印PDF</b> 在打印菜单里选"另存为PDF"。<br>📐 照片会<b>智能分页</b>：文字多时首页只放 1 张，其余每页 2 张。</div>
+    <div class="tip">👇 预览无误后：<b>导出 Word</b> 可直接存到手机/发微信；<b>打印PDF</b> 在打印菜单里选"另存为PDF"。<br>📐 照片<b>智能分页</b>：上下排列、保持原始比例、尽量放大——文字多时首页只放 1 张，其余每页 2 张。</div>
     <div class="toolbar">
       <button class="b-back" onclick="backEdit()">← 返回修改</button>
       <button class="b-word" onclick="exportWord()">📄 导出Word</button>
@@ -276,8 +275,6 @@ function buildReport(){
   const plan = pagePlan();
   const no = $('f_no').value.trim();
   const title = $('f_title').value.trim() || '"智引未来"青少年科普学堂';
-  const webPh = k => `<td><img src="${photos[k]}"></td>`;
-  const emptyTd = '<td></td>';
   let out = `
   <div class="r-title">${esc(title)}</div>
   <div class="r-title-u">活 动 简 报</div>
@@ -293,17 +290,22 @@ function buildReport(){
     <tr><td colspan="6" style="text-align:center;font-weight:bold;background:#f7f7f7">活动记录</td></tr>
     <tr><td colspan="6">${esc($('f_rec').value)}</td></tr>`;
   if(plan.first > 0){
-    const cells = plan.list.slice(0, plan.first).map(webPh).join('') + (plan.first===1 ? emptyTd : '');
     out += `
-    <tr><td class="k">活动剪影</td><td colspan="5"><div class="rep-imgs"><table class="imgs"><tr>${cells}</tr></table></div></td></tr>`;
+    <tr><td colspan="6" style="text-align:center;font-weight:bold;background:#f7f7f7">活动剪影</td></tr>`;
+    plan.list.slice(0, plan.first).forEach((k, i)=>{
+      out += `
+    <tr><td colspan="6" style="border:none;text-align:center;padding:4pt 0;">${fitPhoto(k, 500, plan.firstSizes[i])}</td></tr>`;
+    });
   }
   out += `
   </table>`;
-  // 后续照片页：每页 2 张（打印时 .pg 强制另起一页）
+  // 后续照片页：上下排列、每页 2 张、保持原始比例放到最大（打印时 .pg 强制另起一页）
   const restPages = plan.rest.map((pair, i)=>{
-    const cells = pair.map(webPh).join('') + (pair.length===1 ? emptyTd : '');
+    const rows = pair.map(k=>
+      `<tr><td colspan="6" style="border:none;text-align:center;padding:4pt 0;">${fitPhoto(k, 500, 356)}</td></tr>`
+    ).join('');
     const cls = i === plan.rest.length-1 ? ' class="pg pglast"' : ' class="pg"';
-    return `<div${cls}><table class="imgs imgs2"><tr>${cells}</tr></table></div>`;
+    return `<div${cls}><table class="rep">${rows}</table></div>`;
   });
   return out + restPages.join('');
 }
@@ -312,7 +314,26 @@ function buildReport(){
    A4 可用高度 742.7pt ≈ 990px。文字 ≤ 半页(495px) → 首页放 2 张照片；
    文字 > 半页 → 首页只放 1 张；剩余照片每 2 张独占一页。 */
 const HALF_PAGE_PX = 495;
-
+/* ---------- 照片尺寸：读取原始比例，算出"不变形、不超页"的最大尺寸 ---------- */
+const photoRatio = {};          // key → 宽/高 比
+const PHOTO_MAX_W = 500;        // 照片最大宽度（pt），A4 可用宽 510.3pt 留安全余量
+const PHOTO_PAGE_H = 356;       // 照片页单张最大高度（pt），(742.7 − 边距/间隙)/2
+function loadRatios(){
+  const ks = SLOTS.map(s=>s.key).filter(k=>photos[k] && !photoRatio[k]);
+  return Promise.all(ks.map(k=>new Promise(res=>{
+    const im = new Image();
+    im.onload  = ()=>{ photoRatio[k] = (im.naturalWidth && im.naturalHeight) ? im.naturalWidth/im.naturalHeight : 1.5; res(); };
+    im.onerror = ()=>{ photoRatio[k] = 1.5; res(); };
+    im.src = photos[k];
+  })));
+}
+function fitPhoto(k, maxWpt, maxHpt){
+  const r = photoRatio[k] || 1.5;
+  let w = maxWpt, h = w / r;
+  if(h > maxHpt){ h = maxHpt; w = h * r; }
+  const W = Math.round(w*4/3), H = Math.round(h*4/3);   // px 属性（1pt=4/3px，Word 兼容）
+  return `<img src="${photos[k]}" width="${W}" height="${H}" style="width:${w.toFixed(1)}pt;height:${h.toFixed(1)}pt;">`;
+}
 function wordTextBlock(){
   const no = $('f_no').value.trim();
   const title = $('f_title').value.trim() || '"智引未来"青少年科普学堂';
@@ -355,7 +376,11 @@ function pagePlan(){
   const first = list.length===0 ? 0 : (list.length>=2 && textH<=HALF_PAGE_PX ? 2 : 1);
   const rest = [];
   for(let i=first; i<list.length; i+=2) rest.push(list.slice(i, i+2));
-  return { list, first, rest };
+  // 首页照片可用高度（px）：A4 可用高 990 − 文字实际高度 − 剪影标题行/安全余量 44
+  const availPx = Math.max(120, 990 - textH - 44);
+  const firstSizes = [];
+  for(let i=0; i<first; i++) firstSizes.push(Math.max(80, (availPx/first - 10) * 0.75));   // pt
+  return { list, first, rest, firstSizes };
 }
 /* Word 专用版式：所有尺寸写死为 pt/px，禁用嵌套表格与百分比宽度。
    Word 打开 HTML 时不支持 width:100% / object-fit，会按照片原始像素尺寸渲染
@@ -363,33 +388,29 @@ function pagePlan(){
    分页用 Word 原生 HTML 分页符（page-break-before 的换行符），照片页每页 2 张。 */
 function buildWordReport(){
   const plan = pagePlan();
-  const IMG_W_PT = 244, IMG_H_PT = 143;          // 单张照片尺寸（pt）
-  const IMG_W_PX = Math.round(IMG_W_PT*4/3);     // Word 兼容用 px 属性（1pt=4/3px）
-  const IMG_H_PX = Math.round(IMG_H_PT*4/3);
   const col6 = '<colgroup>' + '<col style="width:85.05pt">'.repeat(6) + '</colgroup>';
-  const imgTag = k => `<img src="${photos[k]}" width="${IMG_W_PX}" height="${IMG_H_PX}" style="width:${IMG_W_PT}pt;height:${IMG_H_PT}pt;">`;
-  const ph  = k => `<td colspan="3" style="border:none;padding:3pt;text-align:center;vertical-align:top;">${imgTag(k)}</td>`;
-  const phC = k => `<td colspan="6" style="border:none;padding:3pt;text-align:center;">${imgTag(k)}</td>`;
-  const emptyPh = '<td colspan="3" style="border:none;padding:3pt;"></td>';
+  const photoRow = (k, maxH) =>
+    `<tr><td colspan="6" style="border:none;padding:2pt 0;text-align:center;">${fitPhoto(k, PHOTO_MAX_W, maxH)}</td></tr>`;
   let page1 = wordTextBlock();
   if(plan.first > 0){
-    const row = plan.first===2 ? `<tr>${ph(plan.list[0])}${ph(plan.list[1])}</tr>`
-                               : `<tr>${ph(plan.list[0])}${emptyPh}</tr>`;
     page1 += `
   <table class="rep">${col6}
-    <tr><td colspan="6" class="h">活动剪影</td></tr>
-    ${row}
+    <tr><td colspan="6" class="h">活动剪影</td></tr>`;
+    plan.list.slice(0, plan.first).forEach((k, i)=>{
+      page1 += `
+    ${photoRow(k, plan.firstSizes[i])}`;
+    });
+    page1 += `
   </table>`;
   }
   const brk = '<br clear="all" style="mso-special-character:line-break;page-break-before:always">';
-  const photoPages = plan.rest.map(pair=>{
-    const row = pair.length===2 ? `<tr>${ph(pair[0])}${ph(pair[1])}</tr>` : `<tr>${phC(pair[0])}</tr>`;
-    return `
-  <table class="rep">${col6}${row}</table>`;
-  });
+  const photoPages = plan.rest.map(pair=>
+    `
+  <table class="rep">${col6}${pair.map(k=>photoRow(k, PHOTO_PAGE_H)).join('')}</table>`
+  );
   return page1 + photoPages.map(p=>brk+p).join('');
 }
-function gen(){
+async function gen(){
   const need = [['f_title','项目名称'],['f_no','活动编号'],['f_name','活动名称'],['f_date','活动时间'],['f_obj','参加对象'],['f_cnt','参与人数'],['f_place','活动地点'],['f_task','任务'],['f_goal','目标'],['f_rec','活动记录']];
   const miss = need.filter(([id])=> !$(id).value.trim()).map(([,n])=>n);
   const nPic = Object.values(photos).filter(Boolean).length;
@@ -399,6 +420,7 @@ function gen(){
   if(nPic < 4) warn += '照片只传了 ' + nPic + '/4 张；';
   if(noFlag) warn += '没有勾选"含旗帜/横幅"；';
   if(warn && !confirm('提醒：' + warn + '\n\n仍要继续生成吗？')) return;
+  await loadRatios();   // 先读取照片原始宽高比，用于按比例最大化排版
   reportHTML = buildReport();
   $('reportBox').innerHTML = reportHTML;
   $('formView').style.display = 'none';

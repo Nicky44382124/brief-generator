@@ -68,17 +68,22 @@
   table.rep { width:100%; border-collapse:collapse; font-size:13px; }
   table.rep td { border:1px solid #000; padding:7px 8px; vertical-align:top; line-height:1.7; }
   td.k { width:78px; text-align:center; font-weight:700; background:#f7f7f7; white-space:nowrap; }
-  .rep-imgs { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-  .rep-imgs figure { margin:0; text-align:center; }
-  .rep-imgs img { width:100%; height:105px; object-fit:cover; border:1px solid #999; display:block; }
-  .rep-imgs figcaption { font-size:11px; color:#444; padding-top:2px; }
+  table.imgs { width:100%; border-collapse:collapse; }
+  table.imgs td { border:none !important; padding:4px; text-align:center; }
+  table.imgs img { width:100%; height:110pt; object-fit:cover; border:1px solid #999; display:block; }
   .r-foot { text-align:right; font-size:13px; margin-top:10px; font-family:"SimSun",serif; }
   @media print {
     body { background:#fff; padding:0; }
-    .top,.card,.toolbar,.bigbtn,.subbtn,.no-print { display:none !important; }
+    .top,.card,.toolbar,.bigbtn,.subbtn { display:none !important; }
     #preview { display:block !important; }
-    .report { box-shadow:none; border-radius:0; padding:10mm 8mm; margin:0; max-width:none; }
-    @page { size:A4; margin:12mm; }
+    .wrap { max-width:none; padding:0; }
+    .report { box-shadow:none; border-radius:0; padding:0; margin:0; max-width:none; }
+    .r-title { font-size:20pt; }
+    .r-title-u { font-size:14pt; }
+    table.rep { font-size:10.5pt; }
+    table.rep td { padding:5pt 6pt; line-height:1.6; }
+    table.imgs img { height:130pt; }
+    @page { size:A4 portrait; margin:14mm 13mm; }
   }
 </style>
 </head>
@@ -256,7 +261,8 @@ function fmtDate(v){
 }
 function buildReport(){
   const no = $('f_no').value.trim();
-  const imgs = SLOTS.map(s=> photos[s.key] ? `<figure><img src="${photos[s.key]}"><figcaption>${CAPTIONS[s.key]}</figcaption></figure>` : '').join('');
+  const tds = SLOTS.map(s=> photos[s.key] ? `<td><img src="${photos[s.key]}"></td>` : '<td></td>');
+  const imgs = `<table class="imgs"><tr>${tds[0]}${tds[1]}</tr><tr>${tds[2]}${tds[3]}</tr></table>`;
   return `
   <div class="r-title">"智引未来"青少年科普学堂</div>
   <div class="r-title-u">活 动 简 报</div>
@@ -298,16 +304,22 @@ function backEdit(){
 
 /* ---------- 导出 Word ---------- */
 function exportWord(){
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>活动简报</title><style>
-  body{font-family:宋体;font-size:12pt;}
-  .r-title{text-align:center;font-size:22pt;font-weight:bold;}
-  .r-title-u{text-align:center;font-size:15pt;border-bottom:2.5pt solid #c00;padding-bottom:6pt;margin-bottom:10pt;}
-  table.rep{width:100%;border-collapse:collapse;}
-  table.rep td{border:1pt solid #000;padding:6pt;vertical-align:top;line-height:1.7;font-size:12pt;}
-  td.k{text-align:center;font-weight:bold;background:#f7f7f7;width:78pt;}
-  .rep-imgs img{width:220pt;height:150pt;object-fit:cover;}
-  .r-foot{text-align:right;font-size:12pt;margin-top:8pt;}
-  </style></head><body>${reportHTML}</body></html>`;
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>活动简报</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+  <style>
+  @page WordSection1 { size:595.3pt 841.9pt; margin:56.7pt 48pt; mso-page-orientation:portrait; }
+  div.WordSection1 { page:WordSection1; }
+  body { font-family:'宋体',SimSun,serif; font-size:12pt; color:#000; }
+  .r-title { text-align:center; font-size:20pt; font-weight:bold; font-family:'宋体',SimSun,serif; margin:0 0 2pt 0; }
+  .r-title-u { text-align:center; font-size:14pt; font-family:'宋体',SimSun,serif; border-bottom:2.5pt solid #c00; padding-bottom:6pt; margin-bottom:10pt; letter-spacing:2pt; }
+  table.rep { width:100%; border-collapse:collapse; }
+  table.rep td { border:1pt solid #000; padding:6pt 8pt; vertical-align:top; line-height:1.6; font-size:10.5pt; font-family:'宋体',SimSun,serif; }
+  td.k { text-align:center; font-weight:bold; background:#f2f2f2; width:80pt; white-space:nowrap; }
+  table.imgs { width:100%; border-collapse:collapse; }
+  table.imgs td { border:none; padding:4pt; text-align:center; }
+  table.imgs img { width:212pt; height:141pt; }
+  </style></head>
+  <body><div class="WordSection1">${reportHTML}</div></body></html>`;
   const blob = new Blob(['\ufeff', html], {type:'application/msword'});
   const a = document.createElement('a');
   const name = ($('f_name').value || '活动').replace(/[\\/:*?"<>|]/g,'-');

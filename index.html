@@ -127,7 +127,7 @@
 
   <div class="card">
     <h2>🤖 AI 帮写 <span class="tag">偷懒模式</span></h2>
-    <div class="tip">✨ 懒得打字？选个活动类型，用大白话写一两句今天干了啥，点按钮自动生成规范的<b>任务 / 目标 / 活动记录</b>，生成后可随意修改。</div>
+    <div class="tip">✨ 懒得打字？选个活动类型，用大白话写一两句今天干了啥，点按钮自动生成规范的<b>任务 / 目标 / 活动记录</b>。活动记录为<b>通讯稿风格</b>，你写的要点会被拆句融入正文，不会单独附在末尾。生成后可随意修改。</div>
     <label>活动类型</label>
     <select id="ai_type" style="width:100%;border:1.5px solid #f0d9b8;border-radius:10px;padding:11px 12px;font-size:15px;background:#fffdf8;">
       <option value="lecture">📚 科普讲解课</option>
@@ -522,6 +522,39 @@ const BANK = {
     inter: '志愿者们在服务中传递温暖、践行志愿精神'
   }
 };
+/* 通讯稿结尾的"活动成效"句（每种活动类型一句，接在"本次活动……"后） */
+const END = {
+  lecture:   '让孩子们在轻松的氛围中收获了科学知识，进一步激发了他们探索科学的兴趣',
+  safety:    '有效提升了孩子们的安全防范意识和自护自救能力',
+  family:    '增进了亲子之间的沟通与理解，营造了温馨和谐的家庭氛围',
+  field:     '让孩子们在真实场景中开阔了视野、增长了见识',
+  show:      '让孩子们在惊叹与欢笑中感受到了科学的神奇魅力',
+  festival:  '让孩子们在参与体验中感受了节日的温暖与快乐',
+  station:   '丰富了孩子们的课余生活，让孩子们在服务站的陪伴中快乐成长',
+  care:      '既解决了家长的后顾之忧，也让孩子们度过了一段安全而充实的时光',
+  volunteer: '弘扬了志愿服务精神，把温暖和关怀送到了群众身边'
+};
+/* 把"活动要点"拆成若干独立句子：按句号/分号/换行切分，去掉开头的"开场、接着、然后"等口语连接词 */
+function splitPoints(pts){
+  return pts.replace(/[；;]/g, '。').replace(/\r?\n/g, '。').split(/[。！!？?]/)
+    .map(s => s.trim()).filter(Boolean)
+    .map(s => s
+      .replace(/^\s*(开场|首先|最开始|一开始|接着是|接着|然后|然后是|再就是|之后|随后|最后)[，,、:：]?\s*/, '')
+      .replace(/^[，,、\s]+/, '')
+      .replace(/[，,、：:]+$/, '')
+      .replace(/不停的/g, '不断地')        /* 口语 → 书面语，贴近通讯稿 */
+      .replace(/企图/g, '试图')
+      .replace(/"/g, (q => () => (q = !q) ? '“' : '”')(false)))   /* 直引号 → 中文引号成对转（首个为左引号） */
+    .filter(Boolean);
+}
+/* 用通讯稿的衔接词把要点句子织成一段连贯正文，不再单独附注 */
+function weavePoints(segs){
+  const LINK = ['活动现场', '随后', '紧接着', '在随后的互动环节', '随后'];
+  return segs.map((s, i) => {
+    const L = (segs.length > 1 && i === segs.length - 1) ? '最后' : (LINK[i] || '随后');
+    return `${L}，${s}`;
+  }).join('。');
+}
 function aiWrite(){
   const pts = $('ai_pts').value.trim();
   if(!pts){ alert('先在"活动要点"里用大白话写一两句今天干了啥哦～'); return; }
@@ -530,14 +563,21 @@ function aiWrite(){
   const obj  = $('f_obj').value.trim() || '孩子们';
   const place= $('f_place').value.trim() || '活动现场';
   const cnt  = $('f_cnt').value.trim();
-  const theme= pts.split(/[，,。；;、]/)[0].trim() || name;
   const d = $('f_date').value;
   const ds = d ? `${parseInt(d.split('-')[1])}月${parseInt(d.split('-')[2])}日` : '近日';
+  /* 要点拆句后作为正文素材，整段按通讯稿结构组织：导语 → 主体（逐环节）→ 成效收尾 */
+  const segs = splitPoints(pts);
+  const firstClause = (segs[0] || '').split(/[，,：:]/)[0].trim();
+  const theme = (firstClause && firstClause.length <= 12) ? firstClause : name;
+  const body = segs.length ? weavePoints(segs) : `${bank.mid}。在互动体验环节，${bank.inter}`;
   $('f_task').value = `以"${theme}"为主题，${bank.task}`;
   $('f_goal').value = bank.goal;
-  $('f_rec').value = `${ds}，在${place}开展了"${name}"活动，${obj}${cnt ? cnt + '名' : ''}参加了本次活动。开场环节，社工以趣味提问引入主题，孩子们热情高涨、踊跃发言。随后，${bank.mid}。在互动体验环节，${bank.inter}。活动最后，社工带领大家回顾了今天学到的知识，孩子们争先恐后地分享自己的收获与感受，活动在轻松愉快的氛围中圆满结束。`;
+  $('f_rec').value =
+    `${ds}，社工在${place}开展了"${name}"活动，${obj}${cnt ? cnt + '名' : ''}参加本次活动。` +
+    `活动围绕"${theme}"这一主题展开。${body}。` +
+    `活动在轻松愉快的氛围中圆满结束。本次活动${END[$('ai_type').value] || END.lecture}，取得了良好的活动成效。`;
   saveDraft();
-  alert('✨ 已生成！任务、目标、活动记录都填好了，检查一下并删掉不合适的句子再生成简报～');
+  alert('✨ 已生成通讯稿！活动要点已融入正文，任务、目标也填好了，检查一下再生成简报～');
 }
 
 loadDraft();

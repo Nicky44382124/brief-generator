@@ -474,13 +474,14 @@ function wordHtml(){
   <body><div class="WordSection1">${buildWordReport()}</div></body></html>`;
 }
 
-/* 文件名：项目名活动简报编号-活动名.doc（去掉文件名非法字符） */
+/* 文件名：YYYYMMDD活动地点活动名称.doc（去掉文件名非法字符；日期缺省用今天） */
 function briefFileName(){
   const clean = s => (s || '').replace(/[\\/:*?"<>|\r\n]/g, '-').replace(/\s+/g, ' ').trim();
-  const title = clean($('f_title').value) || '活动简报';
+  const d = $('f_date').value;                                  // yyyy-mm-dd
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.replace(/-/g, '') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const place = clean($('f_place').value) || '未知地点';
   const name  = clean($('f_name').value)  || '活动';
-  const no    = clean($('f_no').value);
-  return `${title}活动简报${no}-${name}.doc`;
+  return `${ymd}${place}${name}.doc`;
 }
 
 /* ---------- 导出 Word ---------- */
@@ -494,8 +495,11 @@ function exportWord(){
 
 /* ---------- 飞书归档：中转服务配置 ----------
    部署 Cloudflare 中转服务后把地址填到这里；也可在页面上首次点击按钮时手动输入（存本机）。 */
-const FEISHU_ENDPOINT = '';   // 如 https://brief-feishu.xxx.workers.dev
-const FEISHU_KEY = '';        // 与中转服务里的 SHARED_KEY 一致
+/* 中转地址自动适配：电脑本机用 localhost；手机同 Wi-Fi 访问时自动跟随页面所在电脑的 IP */
+const _fsHost = location.hostname;
+const _fsIsLan = (_fsHost === 'localhost' || _fsHost === '127.0.0.1' || /^192\.168\./.test(_fsHost) || /^10\./.test(_fsHost) || /^172\.(1[6-9]|2\d|3[01])\./.test(_fsHost));
+const FEISHU_ENDPOINT = _fsIsLan ? ('http://' + _fsHost + ':8787') : 'http://localhost:8787';
+const FEISHU_KEY = 'xiangrikui-2026';              // 与 relay_feishu.py 里的 SHARED_KEY 一致
 function fsConfig(){
   const ep  = (localStorage.getItem('fs_endpoint') || FEISHU_ENDPOINT || '').trim().replace(/\/+$/,'');
   const key = localStorage.getItem('fs_key') || FEISHU_KEY || '';

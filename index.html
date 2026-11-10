@@ -72,12 +72,14 @@
   table.imgs td { border:none !important; padding:4px; text-align:center; }
   table.imgs img { width:100%; height:110pt; object-fit:cover; border:1px solid #999; display:block; }
   .r-foot { text-align:right; font-size:13px; margin-top:10px; font-family:"SimSun",serif; }
+  .vsp { display:none; }   /* 照片页上边距占位，仅打印时显示 */
   @media print {
     body { background:#fff; padding:0; }
     .top,.card,.toolbar,.bigbtn,.subbtn { display:none !important; }
     #preview { display:block !important; }
     .wrap { max-width:none; padding:0; }
-    .report { box-shadow:none; border-radius:0; padding:14mm 13mm; margin:0; max-width:none; }
+    .report { box-shadow:none; border-radius:0; padding:2.54cm 3.18cm; margin:0; max-width:none; }
+   .vsp { display:block; height:2.54cm; }   /* 每个照片页顶部的上边距（@page margin 为 0，边距由内容提供） */
     .r-title { font-size:20pt; }
     .r-title-u { font-size:14pt; }
     table.rep { font-size:10.5pt; }
@@ -164,7 +166,7 @@
 <div id="preview">
   <div class="card">
     <h2>✅ 简报已生成</h2>
-    <div class="tip">👇 预览无误后：<b>导出 Word</b> 可直接存到手机/发微信；<b>打印PDF</b> 在打印菜单里选"另存为PDF"。<br>📐 照片<b>统一宽 14cm、按原图比例显示</b>：首页放得下就放 1 张，其余每页 2 张上下排（中间空白分界）、居中。</div>
+    <div class="tip">👇 预览无误后：<b>导出 Word</b> 可直接存到手机/发微信；<b>打印PDF</b> 在打印菜单里选"另存为PDF"。<br>📐 页边距固定：上下 2.54cm、左右 3.18cm。照片<b>统一宽 14cm、按原图比例显示</b>：首页放得下就放 1 张，其余每页 2 张上下排（中间空白分界）、居中。</div>
     <div class="toolbar">
       <button class="b-back" onclick="backEdit()">← 返回修改</button>
       <button class="b-word" onclick="exportWord()">📄 导出Word</button>
@@ -303,20 +305,20 @@ function buildReport(){
       ? `<tr><td colspan="6" style="border:none;text-align:center;padding:2pt 0;">${fitPhoto(pair[0])}</td></tr>${blankRow}<tr><td colspan="6" style="border:none;text-align:center;padding:2pt 0;">${fitPhoto(pair[1])}</td></tr>`
       : `<tr><td colspan="6" style="border:none;text-align:center;padding:2pt 0;">${fitPhoto(pair[0])}</td></tr>`;
     const cls = i === plan.pages.length-1 ? ' class="pg pglast"' : ' class="pg"';
-    return `<div${cls}><table class="rep">${rows}</table></div>`;
+    return `<div${cls}><div class="vsp"></div><table class="rep">${rows}</table></div>`;
   });
   return out + restPages.join('');
 }
 /* ---------- 智能分页 ----------
-   先在隐藏容器里按 Word 的字体/字号/表格宽度渲染一遍文字部分，量出实际高度；
-   A4 可用高度 742.7pt ≈ 990px。文字 ≤ 半页(495px) → 首页放 2 张照片；
-   文字 > 半页 → 首页只放 1 张；剩余照片每 2 张独占一页。 */
+   先在隐藏容器里按 Word 的字体/字号/表格宽度渲染一遍文字部分，量出实际高度。
+   页边距固定：上下 2.54cm(72pt)、左右 3.18cm(90pt)，
+   A4 可用宽度 = 595.3 − 2×90 = 415.3pt，可用高度 = 841.9 − 2×72 = 697.9pt ≈ 930px。 */
 /* ---------- 照片尺寸：固定宽 14cm，高度按原始比例，完整显示原图 ---------- */
 const photoRatio = {};              // key → 宽/高 比
-const PHOTO_W_PT = 396.9;           // 照片固定宽度 = 14cm
-const PAGE_H_PT = 742.7;            // A4 可用高度（纸高 841.9pt − 上下页边距 2×49.6pt）
+const PHOTO_W_PT = 396.9;           // 照片固定宽度 = 14cm（页宽 415.3pt 内放得下）
+const PAGE_H_PT = 697.9;            // A4 可用高度（纸高 841.9pt − 上下页边距 2×72pt）
 const GAP_PT = 30;                  // 两张照片之间空白分界行高度（pt）
-const PHOTO_H_CAP = 700;            // 极端竖片保护上限（pt），超过则整体等比缩小
+const PHOTO_H_CAP = 685;            // 极端竖片保护上限（pt），超过则整体等比缩小（可用高 697.9 − 安全余量）
 function loadRatios(){
   const ks = SLOTS.map(s=>s.key).filter(k=>photos[k] && !photoRatio[k]);
   return Promise.all(ks.map(k=>new Promise(res=>{
@@ -340,7 +342,7 @@ function fitPhoto(k){
 function wordTextBlock(){
   const no = $('f_no').value.trim();
   const title = $('f_title').value.trim() || '"智引未来"青少年科普学堂';
-  const col6 = '<colgroup>' + '<col style="width:85.05pt">'.repeat(6) + '</colgroup>';
+  const col6 = '<colgroup>' + '<col style="width:69.22pt">'.repeat(6) + '</colgroup>';   // 6 列 × 69.22pt = 415.3pt（A4 可用宽）
   return `
   <div class="r-title">${esc(title)}</div>
   <div class="r-title-u">活 动 简 报</div>
@@ -359,11 +361,11 @@ function wordTextBlock(){
 }
 function measureText(){
   const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:680px;visibility:hidden;';
+  d.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:554px;visibility:hidden;';   // 415.3pt × 4/3 ≈ 554px
   d.innerHTML = `<style>
     .mt .r-title{text-align:center;font-size:18pt;font-weight:bold;margin:0 0 2pt 0;}
     .mt .r-title-u{text-align:center;font-size:13pt;border-bottom:2.25pt solid #c00;padding-bottom:5pt;margin-bottom:8pt;letter-spacing:2pt;}
-    .mt table.rep{width:510.3pt;table-layout:fixed;border-collapse:collapse;}
+    .mt table.rep{width:415.3pt;table-layout:fixed;border-collapse:collapse;}
     .mt table.rep td{border:1pt solid #000;padding:4pt 5pt;vertical-align:top;line-height:1.5;font-size:10.5pt;font-family:'宋体',SimSun,serif;word-wrap:break-word;}
     .mt td.k{text-align:center;font-weight:bold;background:#f2f2f2;white-space:nowrap;}
     .mt td.h{text-align:center;font-weight:bold;background:#f2f2f2;}
@@ -393,7 +395,7 @@ function pagePlan(){
    分页用 Word 原生 HTML 分页符（page-break-before 的换行符），照片页每页 2 张。 */
 function buildWordReport(){
   const plan = pagePlan();
-  const col6 = '<colgroup>' + '<col style="width:85.05pt">'.repeat(6) + '</colgroup>';
+  const col6 = '<colgroup>' + '<col style="width:69.22pt">'.repeat(6) + '</colgroup>';   // 6 列 × 69.22pt = 415.3pt（A4 可用宽）
   const photoRow = k =>
     `<tr><td colspan="6" style="border:none;padding:2pt 0;text-align:center;">${fitPhoto(k)}</td></tr>`;
   const blankRow = `<tr><td colspan="6" style="border:none;height:${GAP_PT}pt;">&nbsp;</td></tr>`;
@@ -440,12 +442,12 @@ function exportWord(){
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>活动简报</title>
   <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
   <style>
-  @page WordSection1 { size:595.3pt 841.9pt; margin:49.6pt 42.5pt; mso-page-orientation:portrait; }
+  @page WordSection1 { size:595.3pt 841.9pt; margin:72pt 90pt; mso-page-orientation:portrait; }   /* 上下 2.54cm、左右 3.18cm */
   div.WordSection1 { page:WordSection1; }
   body { font-family:'宋体',SimSun,serif; font-size:12pt; color:#000; }
   .r-title { text-align:center; font-size:18pt; font-weight:bold; font-family:'宋体',SimSun,serif; margin:0 0 2pt 0; }
   .r-title-u { text-align:center; font-size:13pt; font-family:'宋体',SimSun,serif; border-bottom:2.25pt solid #c00; padding-bottom:5pt; margin-bottom:8pt; letter-spacing:2pt; }
-  table.rep { width:510.3pt; table-layout:fixed; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  table.rep { width:415.3pt; table-layout:fixed; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
   table.rep td { border:1pt solid #000; padding:4pt 5pt; vertical-align:top; line-height:1.5; font-size:10.5pt; font-family:'宋体',SimSun,serif; word-wrap:break-word; }
   td.k { text-align:center; font-weight:bold; background:#f2f2f2; white-space:nowrap; }
   td.h { text-align:center; font-weight:bold; background:#f2f2f2; }

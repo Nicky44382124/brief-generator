@@ -58,6 +58,15 @@
   .b-word { background:#2f7bd8; color:#fff; }
   .b-print { background:#7ac943; color:#fff; }
   .b-back { background:#fff; color:#b07b2a; border:1.5px solid #f0c98e; }
+  .b-feishu { background:#3370ff; color:#fff; }
+  .b-feishu[disabled] { opacity:.6; }
+  /* 飞书上传状态条 */
+  .fs-status { display:none; margin-top:10px; padding:11px 13px; border-radius:11px; font-size:13.5px;
+               line-height:1.6; border:1.5px solid #dfe6f2; background:#f6f9ff; color:#3b4a63; }
+  .fs-status.show { display:block; }
+  .fs-status.ok  { border-color:#a9e0b7; background:#f3fdf6; color:#1f7a3f; }
+  .fs-status.err { border-color:#f5c0c0; background:#fff5f5; color:#b22b2b; }
+  .fs-status a { color:#3370ff; font-weight:700; }
   /* 简报样式（预览 + Word 共用） */
   .report { background:#fff; padding:26px 18px; margin-top:16px; border-radius:8px;
             box-shadow:0 3px 14px rgba(150,100,30,.18); }
@@ -75,7 +84,7 @@
   .vsp { display:none; }   /* 照片页上边距占位，仅打印时显示 */
   @media print {
     body { background:#fff; padding:0; }
-    .top,.card,.toolbar,.bigbtn,.subbtn { display:none !important; }
+    .top,.card,.toolbar,.bigbtn,.subbtn,.fs-status { display:none !important; }
     #preview { display:block !important; }
     .wrap { max-width:none; padding:0; }
     .report { box-shadow:none; border-radius:0; padding:2.54cm 3.18cm; margin:0; max-width:none; }
@@ -109,9 +118,14 @@
     <label>项目 / 学堂名称 *</label>
     <input type="text" id="f_title" list="titleList" value="&quot;智引未来&quot;青少年科普学堂" placeholder="填页面顶部的大标题">
     <datalist id="titleList">
-      <option value="&quot;智引未来&quot;青少年科普学堂"></option>
-      <option value="&quot;记忆包裹&quot;老年认知健康课堂"></option>
-      <option value="&quot;向日葵&quot;青少年成长课堂"></option>
+      <option value="“智引未来”青少年科普学堂"></option>
+      <option value="“快乐童行”未成年人安全自护教育项目"></option>
+      <option value="NO.509西门桥社区儿童服务站"></option>
+      <option value="西门桥社区儿童议事会项目"></option>
+      <option value="“阅伴湾”书香伴康复"></option>
+      <option value="“天使守护”安全自护教育项目"></option>
+      <option value="“儿童安全官”儿童赋能计划"></option>
+      <option value="汉川市向日葵社工假期公益托管班"></option>
     </datalist>
     <div class="row2">
       <div><label>活动编号 *</label><input type="text" id="f_no" placeholder="如：24"></div>
@@ -173,8 +187,10 @@
     <div class="toolbar">
       <button class="b-back" onclick="backEdit()">← 返回修改</button>
       <button class="b-word" onclick="exportWord()">📄 导出Word</button>
+      <button class="b-feishu" id="btnFeishu" onclick="saveToFeishu()">☁️ 保存到飞书</button>
       <button class="b-print" onclick="window.print()">🖨️ 打印PDF</button>
     </div>
+    <div class="fs-status" id="fsStatus"></div>
   </div>
   <div class="report" id="reportBox"></div>
 </div>
@@ -440,9 +456,9 @@ function backEdit(){
   window.scrollTo(0,0);
 }
 
-/* ---------- 导出 Word ---------- */
-function exportWord(){
-  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>活动简报</title>
+/* ---------- 生成 Word 文件内容（导出与上传飞书共用） ---------- */
+function wordHtml(){
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>活动简报</title>
   <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
   <style>
   @page WordSection1 { size:595.3pt 841.9pt; margin:72pt 90pt; mso-page-orientation:portrait; }   /* 上下 2.54cm、左右 3.18cm */
@@ -456,13 +472,92 @@ function exportWord(){
   td.h { text-align:center; font-weight:bold; background:#f2f2f2; }
   </style></head>
   <body><div class="WordSection1">${buildWordReport()}</div></body></html>`;
-  const blob = new Blob(['\ufeff', html], {type:'application/msword'});
+}
+
+/* 文件名：项目名活动简报编号-活动名.doc（去掉文件名非法字符） */
+function briefFileName(){
+  const clean = s => (s || '').replace(/[\\/:*?"<>|\r\n]/g, '-').replace(/\s+/g, ' ').trim();
+  const title = clean($('f_title').value) || '活动简报';
+  const name  = clean($('f_name').value)  || '活动';
+  const no    = clean($('f_no').value);
+  return `${title}活动简报${no}-${name}.doc`;
+}
+
+/* ---------- 导出 Word ---------- */
+function exportWord(){
+  const blob = new Blob(['\ufeff', wordHtml()], {type:'application/msword'});
   const a = document.createElement('a');
-  const name = ($('f_name').value || '活动').replace(/[\\/:*?"<>|]/g,'-');
-  const titleFile = ($('f_title').value.trim() || '活动简报').replace(/[\\/:*?"<>|]/g,'-');
   a.href = URL.createObjectURL(blob);
-  a.download = `${titleFile}活动简报${$('f_no').value}-${name}.doc`;
+  a.download = briefFileName();
   document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- 飞书归档：中转服务配置 ----------
+   部署 Cloudflare 中转服务后把地址填到这里；也可在页面上首次点击按钮时手动输入（存本机）。 */
+const FEISHU_ENDPOINT = '';   // 如 https://brief-feishu.xxx.workers.dev
+const FEISHU_KEY = '';        // 与中转服务里的 SHARED_KEY 一致
+function fsConfig(){
+  const ep  = (localStorage.getItem('fs_endpoint') || FEISHU_ENDPOINT || '').trim().replace(/\/+$/,'');
+  const key = localStorage.getItem('fs_key') || FEISHU_KEY || '';
+  return ep ? { ep, key } : null;
+}
+/* 还没配置时，在状态条里就地输入服务地址（不用 prompt，微信里也能用） */
+function fsSetupForm(){
+  const box = $('fsStatus');
+  box.className = 'fs-status show';
+  box.innerHTML =
+    '⚙️ 首次使用：把「飞书归档服务地址」粘贴到这里（只需设置一次）<br>' +
+    '<input id="fsEpInput" placeholder="https://xxx.workers.dev" ' +
+    'style="width:100%;margin:8px 0;padding:9px 10px;border:1.5px solid #cfd9ea;border-radius:9px;font-size:13px">' +
+    '<input id="fsKeyInput" placeholder="归档口令（可选）" ' +
+    'style="width:100%;margin:0 0 8px;padding:9px 10px;border:1.5px solid #cfd9ea;border-radius:9px;font-size:13px">' +
+    '<button onclick="fsSaveConfig()" style="border:none;border-radius:9px;padding:9px 16px;background:#3370ff;color:#fff;font-size:13px;font-weight:700">保存并上传</button>';
+}
+function fsSaveConfig(){
+  const ep = ($('fsEpInput').value || '').trim().replace(/\/+$/,'');
+  const key = ($('fsKeyInput').value || '').trim();
+  if(!/^https?:\/\//.test(ep)){ alert('地址要以 http:// 或 https:// 开头哦～'); return; }
+  localStorage.setItem('fs_endpoint', ep);
+  if(key) localStorage.setItem('fs_key', key);
+  saveToFeishu();
+}
+/* UTF-8 字符串 → base64（分块处理，避免大文件爆栈） */
+function b64utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '', CH = 0x8000;
+  for(let i = 0; i < bytes.length; i += CH){
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  }
+  return btoa(bin);
+}
+
+/* ---------- 保存到飞书 ---------- */
+async function saveToFeishu(){
+  const box = $('fsStatus'), btn = $('btnFeishu');
+  const cfg = fsConfig();
+  if(!cfg){ fsSetupForm(); return; }
+  const project = ($('f_title').value.trim() || '未命名项目');
+  const fname = briefFileName();
+  btn.disabled = true;
+  box.className = 'fs-status show';
+  box.innerHTML = `☁️ 正在上传「${fname}」到飞书…`;
+  try{
+    const r = await fetch(cfg.ep + '/upload', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ key: cfg.key, project, filename: fname, content: b64utf8(wordHtml()) })
+    });
+    let j;
+    try { j = await r.json(); } catch(e){ throw new Error('服务返回异常（HTTP ' + r.status + '）'); }
+    if(!j || !j.ok) throw new Error((j && j.error) || ('上传失败 HTTP ' + r.status));
+    box.className = 'fs-status show ok';
+    box.innerHTML = `✅ 已保存到飞书「${j.folder}」文件夹<br><a href="${j.folderUrl}" target="_blank" rel="noopener">打开该文件夹 →</a>`;
+  }catch(e){
+    box.className = 'fs-status show err';
+    box.innerHTML = `❌ 上传失败：${String(e.message || e)}<br>文件没丢，可先点「📄 导出Word」存到本地，稍后再试。`;
+  }finally{
+    btn.disabled = false;
+  }
 }
 
 /* ---------- AI 帮写（离线句式库） ---------- */
